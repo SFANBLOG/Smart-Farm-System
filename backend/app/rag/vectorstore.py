@@ -102,17 +102,45 @@ def hybrid_search(query: str, chunks: list[dict], top_k: int | None = None) -> l
 
 
 def chunk_text(text: str, size: int | None = None, overlap: int | None = None) -> list[str]:
-    """按字符切片，带重叠。"""
+    """按句界切片：整句贪心装填至 size，段间以整句承接约 overlap，避免截断句子；超长单句回退定长窗口。"""
     size = size or settings.RAG_CHUNK_SIZE
     overlap = overlap or settings.RAG_CHUNK_OVERLAP
     text = (text or "").strip()
     if not text:
         return []
-    chunks, start = [], 0
-    while start < len(text):
-        end = min(start + size, len(text))
-        chunks.append(text[start:end])
-        if end == len(text):
-            break
-        start = end - overlap
+    sents = [p for p in re.split(r"(?<=[。！？；\n])", text) if p.strip()]
+    chunks: list[str] = []
+    cur: list[str] = []
+    cur_len = 0
+
+    def flush_with_carry():
+        nonlocal cur, cur_len
+        chunks.append("".join(cur))
+        carry: list[str] = []
+        c_len = 0
+        for x in reversed(cur):
+            if c_len + len(x) > overlap:
+                break
+            carry.insert(0, x)
+            c_len += len(x)
+        cur, cur_len = carry, c_len
+
+    for s in sents:
+        if len(s) > size:  # 超长单句：定长硬切兜底，不与前后句做整句承接
+            if cur:
+                flush_with_carry()
+            cur, cur_len = [], 0
+            step = size - overlap if overlap < size else size
+            while len(s) > size:
+                chunks.append(s[:size])
+                s = s[step:]
+            if s.strip():
+                cur, cur_len = [s], len(s)
+            continue
+        if cur and cur_len + len(s) > size:
+            flush_with_carry()
+        cur.append(s)
+        cur_len += len(s)
+    if cur:
+        chunks.append("".join(cur))
     return chunks
