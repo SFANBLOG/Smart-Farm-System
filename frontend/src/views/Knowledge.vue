@@ -61,7 +61,7 @@ const docs = ref([]); const query = ref(''); const hits = ref([])
 const searched = ref(false); const searching = ref(false); const reindexing = ref(false)
 const textForm = ref({ title: '', content: '' })
 
-async function loadDocs() { const d = await knowledge.docs(1, 50); docs.value = d.items }
+async function loadDocs() { const d = await knowledge.docs(1, 200); docs.value = d.items }
 async function search() {
   if (!query.value.trim()) return
   searching.value = true
