@@ -50,10 +50,11 @@ class LocalRuleLLM:
         lines = [f"关于「{q[:40]}」："]
         if refs:
             lines.append("已从本地知识库检索到相关条目，结论如下（附知识依据）：")
-            for i, r in enumerate(refs[:3], 1):
+            for i, r in enumerate(refs[:5], 1):
                 title = r.get("title") or "知识库"
                 content = (r.get("content") or "").strip().replace("\n", " ")
-                lines.append(f"{i}. 《{title}》{content[:120]}")
+                score = r.get("score") or 0
+                lines.append(f"{i}. 《{title}》(相关度 {score * 100:.0f}%) {content[:120]}")
             lines.append("以上依据来自知识库命中项，实际操作请结合田间情况。")
         else:
             lines.append("知识库暂无直接命中，以下为通用建议：保持水肥均衡、加强巡检、"

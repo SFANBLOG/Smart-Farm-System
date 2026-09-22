@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     # RAG
     RAG_CHUNK_SIZE: int = 400
     RAG_CHUNK_OVERLAP: int = 60
-    RAG_TOP_K: int = 4
+    RAG_TOP_K: int = 6
 
     CORS_ORIGINS: str = "*"
 
