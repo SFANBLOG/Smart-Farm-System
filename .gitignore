@@ -1,0 +1,20 @@
+# 后端忽略
+backend/.venv/
+backend/data/
+backend/uploads/
+backend/.env
+__pycache__/
+*.pyc
+*.db
+*.db-shm
+*.db-wal
+
+# 前端忽略
+frontend/node_modules/
+frontend/dist/
+
+# 系统
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
