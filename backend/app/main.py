@@ -21,8 +21,10 @@ from app.db import init_db, close_db
 async def lifespan(_: FastAPI):
     await init_db()
     # 首次启动播种演示数据
-    from app.seed import ensure_seed
+    from app.seed import ensure_seed, backfill_knowledge
     await ensure_seed()
+    # 每次启动按最新内容补齐/刷新演示知识库（幂等，保留用户自导入文档）
+    await backfill_knowledge()
     yield
     await close_db()
 

@@ -38,8 +38,8 @@ class Settings(BaseSettings):
     SCAN_CONCURRENCY: int = 3
 
     # RAG
-    RAG_CHUNK_SIZE: int = 400
-    RAG_CHUNK_OVERLAP: int = 60
+    RAG_CHUNK_SIZE: int = 180
+    RAG_CHUNK_OVERLAP: int = 30
     RAG_TOP_K: int = 6
 
     CORS_ORIGINS: str = "*"

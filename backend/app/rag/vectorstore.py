@@ -86,7 +86,19 @@ def hybrid_search(query: str, chunks: list[dict], top_k: int | None = None) -> l
         score = math.sqrt(raw) if raw > 0 else 0.0
         scored.append({**c, "score": round(score, 4)})
     scored.sort(key=lambda x: x["score"], reverse=True)
-    return [s for s in scored[:top_k] if s["score"] > 0.05]
+    # 单文档最多贡献 2 块，保证引用来源多样
+    picked, per_doc = [], {}
+    for s in scored:
+        if s["score"] <= 0.05:
+            break
+        did = s.get("doc_id")
+        if per_doc.get(did, 0) >= 2:
+            continue
+        per_doc[did] = per_doc.get(did, 0) + 1
+        picked.append(s)
+        if len(picked) >= top_k:
+            break
+    return picked
 
 
 def chunk_text(text: str, size: int | None = None, overlap: int | None = None) -> list[str]:
