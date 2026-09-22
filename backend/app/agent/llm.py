@@ -47,18 +47,42 @@ class LocalRuleLLM:
     def _chat(self, prompt: str, ctx: dict) -> str:
         refs = ctx.get("refs") or []
         q = (ctx.get("user_input") or prompt).strip()
-        lines = [f"关于「{q[:40]}」："]
-        if refs:
-            lines.append("已从本地知识库检索到相关条目，结论如下（附知识依据）：")
-            for i, r in enumerate(refs[:5], 1):
-                title = r.get("title") or "知识库"
-                content = (r.get("content") or "").strip().replace("\n", " ")
-                score = r.get("score") or 0
-                lines.append(f"{i}. 《{title}》(相关度 {score * 100:.0f}%) {content[:120]}")
-            lines.append("以上依据来自知识库命中项，实际操作请结合田间情况。")
-        else:
-            lines.append("知识库暂无直接命中，以下为通用建议：保持水肥均衡、加强巡检、"
-                         "关注气象预警；涉及病虫害请先做叶片诊断。请以实地判断为准。")
+        if not refs:
+            return ("知识库暂无直接命中，以下为通用建议：\n\n"
+                    "- 保持水肥均衡，加强田间巡检\n- 关注气象预警，提前防灾减灾\n"
+                    "- 疑似病虫害请先做叶片诊断\n\n> 请以实地判断为准。")
+        top = refs[0]
+        lines = [f"**结论**：关于「{q[:30]}」，知识库命中 {len(refs)} 条相关条目，"
+                 f"最相关为《{top.get('title') or '知识库'}》"
+                 f"(相关度 {(top.get('score') or 0) * 100:.0f}%)，要点如下：", ""]
+        lines.append("**知识要点**")
+        n = 0
+        seen: set[str] = set()
+        floor = max(0.3, (top.get("score") or 0) * 0.5)  # 低于置顶分一半的条目不进要点
+        for r in refs[:4]:
+            if (r.get("score") or 0) < floor:
+                break
+            title = r.get("title") or "知识库"
+            score = (r.get("score") or 0) * 100
+            for sent in re.split(r"[。；;]", (r.get("content") or "").replace("\n", " ")):
+                sent = sent.strip(" ，,")
+                if not sent or sent in seen:
+                    continue
+                if not any(k in sent for k in ("可", "应", "需", "须", "禁止", "建议", "及时",
+                                               "保持", "表现", "识别", "遵守")):
+                    continue
+                seen.add(sent)
+                lines.append(f"- {sent[:80]}。 **——《{title}》{score:.0f}%**")
+                n += 1
+                if n >= 6:
+                    break
+            if n >= 6:
+                break
+        if n == 0:
+            lines.append(f"- {(top.get('content') or '').strip()[:100]}。 "
+                         f"**——《{top.get('title') or '知识库'}》{(top.get('score') or 0) * 100:.0f}%**")
+        lines.append("")
+        lines.append("> 以上为知识库命中条目摘录，实际操作请结合田间情况。")
         return "\n".join(lines)
 
 
