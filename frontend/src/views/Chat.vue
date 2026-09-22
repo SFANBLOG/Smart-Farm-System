@@ -42,8 +42,8 @@
                 <div v-else>{{ m.content }}</div>
                 <div v-if="m.knowledge_refs?.length" class="refs">
                   <div class="refs-title">📚 知识依据：</div>
-                  <el-tag v-for="r in m.knowledge_refs" :key="r.chunk_id" size="small" type="info" class="ref-tag">
-                    《{{ r.title }}》 {{ (r.score * 100).toFixed(0) }}%
+                  <el-tag v-for="(r, ri) in m.knowledge_refs" :key="r.chunk_id" size="small" type="info" class="ref-tag">
+                    【{{ ri + 1 }}】《{{ r.title }}》 {{ (r.score * 100).toFixed(0) }}%
                   </el-tag>
                 </div>
               </div>

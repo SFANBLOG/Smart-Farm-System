@@ -45,44 +45,42 @@ class LocalRuleLLM:
                 "强降雨/设备故障/病虫害七类风险分级，同地块同类型自动去重合并。")
 
     def _chat(self, prompt: str, ctx: dict) -> str:
+        """DeepSeek 风格：开门见山给答案，正文内嵌【n】引用编号（对应下方知识依据顺序）。"""
         refs = ctx.get("refs") or []
-        q = (ctx.get("user_input") or prompt).strip()
         if not refs:
-            return ("知识库暂无直接命中，以下为通用建议：\n\n"
-                    "- 保持水肥均衡，加强田间巡检\n- 关注气象预警，提前防灾减灾\n"
-                    "- 疑似病虫害请先做叶片诊断\n\n> 请以实地判断为准。")
+            return ("目前知识库中暂无与这个问题直接匹配的资料。通用建议是：保持水肥均衡、加强田间巡检，"
+                    "关注气象预警并提前防灾减灾；如果疑似病虫害，建议先做叶片影像诊断再对症处理。"
+                    "您也可以到「农业知识库」补充相关文档，补充后重新提问即可命中。")
+
+        def sents(r: dict) -> list[str]:
+            return [s.strip(" ，,") for s in
+                    re.split(r"[。；;]", (r.get("content") or "").replace("\n", " "))
+                    if len(s.strip(" ，,")) >= 6]
+
         top = refs[0]
-        lines = [f"**结论**：关于「{q[:30]}」，知识库命中 {len(refs)} 条相关条目，"
-                 f"最相关为《{top.get('title') or '知识库'}》"
-                 f"(相关度 {(top.get('score') or 0) * 100:.0f}%)，要点如下：", ""]
-        lines.append("**知识要点**")
-        n = 0
-        seen: set[str] = set()
-        floor = max(0.3, (top.get("score") or 0) * 0.5)  # 低于置顶分一半的条目不进要点
-        for r in refs[:4]:
+        top_sents = sents(top)
+        opening = top_sents[0] if top_sents else "请参考下方知识依据"
+        lines = [f"{opening}【1】。"]
+        used = {opening}
+
+        floor = max(0.3, (top.get("score") or 0) * 0.5)  # 低于置顶分一半的条目不进正文
+        bullets: list[str] = []
+        for i, r in enumerate(refs[:4], 1):
             if (r.get("score") or 0) < floor:
                 break
-            title = r.get("title") or "知识库"
-            score = (r.get("score") or 0) * 100
-            for sent in re.split(r"[。；;]", (r.get("content") or "").replace("\n", " ")):
-                sent = sent.strip(" ，,")
-                if not sent or sent in seen:
+            for s in sents(r):
+                if s in used or not any(k in s for k in ("可", "应", "需", "须", "禁止", "建议",
+                                                         "及时", "保持", "表现", "识别", "遵守")):
                     continue
-                if not any(k in sent for k in ("可", "应", "需", "须", "禁止", "建议", "及时",
-                                               "保持", "表现", "识别", "遵守")):
-                    continue
-                seen.add(sent)
-                lines.append(f"- {sent[:80]}。 **——《{title}》{score:.0f}%**")
-                n += 1
-                if n >= 6:
+                used.add(s)
+                bullets.append(f"- {s}【{i}】。")
+                if len(bullets) >= 5:
                     break
-            if n >= 6:
+            if len(bullets) >= 5:
                 break
-        if n == 0:
-            lines.append(f"- {(top.get('content') or '').strip()[:100]}。 "
-                         f"**——《{top.get('title') or '知识库'}》{(top.get('score') or 0) * 100:.0f}%**")
-        lines.append("")
-        lines.append("> 以上为知识库命中条目摘录，实际操作请结合田间情况。")
+        if bullets:
+            lines += ["", *bullets]
+        lines += ["", "以上内容综合自本地农业知识库（来源见下方知识依据），实际操作请结合田间情况判断。"]
         return "\n".join(lines)
 
 
