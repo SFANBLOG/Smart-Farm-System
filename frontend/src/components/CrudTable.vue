@@ -42,7 +42,7 @@
           </el-select>
           <el-input-number v-else-if="f.type === 'number'" v-model="editing[f.prop]" style="width:100%" />
           <el-switch v-else-if="f.type === 'bool'" v-model="editing[f.prop]" />
-          <el-input v-else v-model="editing[f.prop]" type="textarea" v-if="f.textarea" :rows="3" />
+          <el-input v-else-if="f.textarea" v-model="editing[f.prop]" type="textarea" :rows="3" />
           <el-input v-else v-model="editing[f.prop]" />
         </el-form-item>
       </el-form>
